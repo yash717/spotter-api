@@ -31,6 +31,8 @@ def get_membership(user):
 
 class IsOrgAdmin(BasePermission):
     def has_permission(self, request, view):
+        if getattr(request.user, "is_superuser", False):
+            return True
         membership = get_membership(request.user)
         return membership is not None and membership.role == MemberRole.ORG_ADMIN
 
@@ -39,6 +41,8 @@ class IsDispatcherOrAbove(BasePermission):
     ALLOWED_ROLES = {MemberRole.ORG_ADMIN, MemberRole.DISPATCHER}
 
     def has_permission(self, request, view):
+        if getattr(request.user, "is_superuser", False):
+            return True
         membership = get_membership(request.user)
         return membership is not None and membership.role in self.ALLOWED_ROLES
 
@@ -47,23 +51,32 @@ class IsFleetManagerOrAbove(BasePermission):
     ALLOWED_ROLES = {MemberRole.ORG_ADMIN, MemberRole.FLEET_MANAGER, MemberRole.DISPATCHER}
 
     def has_permission(self, request, view):
+        if getattr(request.user, "is_superuser", False):
+            return True
         membership = get_membership(request.user)
         return membership is not None and membership.role in self.ALLOWED_ROLES
 
 
 class IsAnyMember(BasePermission):
     def has_permission(self, request, view):
+        if getattr(request.user, "is_superuser", False):
+            return True
         return get_membership(request.user) is not None
 
 
 class CanAccessTrip(BasePermission):
     def has_object_permission(self, request, view, obj):
         membership = get_membership(request.user)
+        if getattr(request.user, "is_superuser", False) and membership is None:
+            return True
         if membership is None:
             return False
+        if membership.role == MemberRole.PLATFORM_ADMIN:
+            return True
         if membership.role in {
-            MemberRole.ORG_ADMIN, MemberRole.DISPATCHER,
-            MemberRole.VIEWER, MemberRole.FLEET_MANAGER,
+            MemberRole.ORG_ADMIN,
+            MemberRole.DISPATCHER,
+            MemberRole.FLEET_MANAGER,
         }:
             return str(obj.organization_id) == str(membership.organization_id)
         if membership.role == MemberRole.DRIVER:

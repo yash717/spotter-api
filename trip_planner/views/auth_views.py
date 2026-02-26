@@ -4,14 +4,17 @@ JWT payload enriched with org_id, role, driver_profile_id.
 """
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
 from rest_framework import serializers as s
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from trip_planner.authentication import assert_active_membership
 from trip_planner.constants import AuditAction, MemberRole
 from trip_planner.models import AuditLog, DriverProfile, OrganizationMember
 from trip_planner.serializers import LoginSerializer, RegisterSerializer
@@ -45,25 +48,42 @@ DetailSerializer = inline_serializer(name="DetailResponse", fields={"detail": s.
 def _set_auth_cookies(response, user):
     refresh = RefreshToken.for_user(user)
 
-    membership = OrganizationMember.objects.filter(
-        user=user, is_active=True
-    ).select_related("organization").first()
+    membership = (
+        OrganizationMember.objects.filter(user=user, is_active=True)
+        .select_related("organization")
+        .first()
+    )
 
-    refresh["org_id"] = str(membership.organization_id) if membership else None
-    refresh["role"] = membership.role if membership else None
-    refresh["member_id"] = str(membership.id) if membership else None
+    # Superuser without org membership gets PLATFORM_ADMIN so JWT and frontend have a role
+    if user.is_superuser and membership is None:
+        refresh["org_id"] = None
+        refresh["role"] = MemberRole.PLATFORM_ADMIN
+        refresh["member_id"] = None
+    else:
+        refresh["org_id"] = str(membership.organization_id) if membership else None
+        refresh["role"] = membership.role if membership else None
+        refresh["member_id"] = str(membership.id) if membership else None
+    refresh["email"] = user.email
 
     profile = DriverProfile.objects.filter(user=user).first()
     refresh["driver_profile_id"] = str(profile.id) if profile else None
 
     access = str(refresh.access_token)
     response.set_cookie(
-        "access_token", value=access, httponly=True,
-        secure=COOKIE_SECURE, samesite="Lax", max_age=ACCESS_TOKEN_MAX_AGE,
+        "access_token",
+        value=access,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="Lax",
+        max_age=ACCESS_TOKEN_MAX_AGE,
     )
     response.set_cookie(
-        "refresh_token", value=str(refresh), httponly=True,
-        secure=COOKIE_SECURE, samesite="Lax", max_age=REFRESH_TOKEN_MAX_AGE,
+        "refresh_token",
+        value=str(refresh),
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="Lax",
+        max_age=REFRESH_TOKEN_MAX_AGE,
     )
     return access
 
@@ -74,10 +94,24 @@ def _clear_auth_cookies(response):
 
 
 def _get_session_payload(user):
-    membership = OrganizationMember.objects.filter(
-        user=user, is_active=True
-    ).select_related("organization").first()
+    membership = (
+        OrganizationMember.objects.filter(user=user, is_active=True)
+        .select_related("organization")
+        .first()
+    )
     profile = DriverProfile.objects.filter(user=user).first()
+
+    # Superuser without org membership is PLATFORM_ADMIN so session has a role
+    if user.is_superuser and membership is None:
+        role = MemberRole.PLATFORM_ADMIN
+        org_id = None
+        org_name = None
+        member_id = None
+    else:
+        role = membership.role if membership else None
+        org_id = str(membership.organization_id) if membership else None
+        org_name = membership.organization.name if membership else None
+        member_id = str(membership.id) if membership else None
 
     return {
         "user": {
@@ -86,10 +120,10 @@ def _get_session_payload(user):
             "first_name": user.first_name,
             "last_name": user.last_name,
         },
-        "role": membership.role if membership else None,
-        "org_id": str(membership.organization_id) if membership else None,
-        "org_name": membership.organization.name if membership else None,
-        "member_id": str(membership.id) if membership else None,
+        "role": role,
+        "org_id": org_id,
+        "org_name": org_name,
+        "member_id": member_id,
         "driver_profile_id": str(profile.id) if profile else None,
     }
 
@@ -107,7 +141,10 @@ class RegisterView(APIView):
         summary="Register organization + first admin",
         description="Creates a new Organization and its first ORG_ADMIN user. Sets httpOnly auth cookies.",
         request=RegisterSerializer,
-        responses={201: SessionResponseSerializer, 400: OpenApiResponse(description="Validation error")},
+        responses={
+            201: SessionResponseSerializer,
+            400: OpenApiResponse(description="Validation error"),
+        },
     )
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -115,7 +152,8 @@ class RegisterView(APIView):
         result = serializer.save()
         user = result["user"]
         AuditLog.objects.create(
-            organization=result["organization"], actor_user=user,
+            organization=result["organization"],
+            actor_user=user,
             action=AuditAction.ORG_CREATED,
             metadata={"org_name": result["organization"].name},
             ip_address=_get_ip(request),
@@ -139,7 +177,10 @@ class LoginView(APIView):
             "Response also includes a raw `access_token` field for Swagger/Postman testing."
         ),
         request=LoginSerializer,
-        responses={200: SessionResponseSerializer, 400: OpenApiResponse(description="Invalid credentials")},
+        responses={
+            200: SessionResponseSerializer,
+            400: OpenApiResponse(description="Invalid credentials"),
+        },
     )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -157,10 +198,14 @@ class RefreshView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
-        tags=["Auth"], summary="Refresh access token",
+        tags=["Auth"],
+        summary="Refresh access token",
         description="Reads refresh_token from httpOnly cookie and issues a new access_token cookie.",
         request=None,
-        responses={200: DetailSerializer, 401: OpenApiResponse(description="No or invalid refresh token")},
+        responses={
+            200: DetailSerializer,
+            401: OpenApiResponse(description="No or invalid refresh token"),
+        },
     )
     def post(self, request):
         raw_refresh = request.COOKIES.get("refresh_token")
@@ -168,23 +213,46 @@ class RefreshView(APIView):
             return Response({"detail": "No refresh token."}, status=status.HTTP_401_UNAUTHORIZED)
         try:
             refresh = RefreshToken(raw_refresh)
+            user_id = refresh.get("user_id")
+            if user_id:
+                try:
+                    user = get_user_model().objects.get(id=user_id)
+                    assert_active_membership(user)
+                except get_user_model().DoesNotExist:
+                    pass
+                except InvalidToken:
+                    response = Response(
+                        {"detail": "Account has been deactivated."},
+                        status=status.HTTP_401_UNAUTHORIZED,
+                    )
+                    _clear_auth_cookies(response)
+                    return response
             access = str(refresh.access_token)
             response = Response({"detail": "Token refreshed.", "access_token": access})
             response.set_cookie(
-                "access_token", value=access, httponly=True,
-                secure=COOKIE_SECURE, samesite="Lax", max_age=ACCESS_TOKEN_MAX_AGE,
+                "access_token",
+                value=access,
+                httponly=True,
+                secure=COOKIE_SECURE,
+                samesite="Lax",
+                max_age=ACCESS_TOKEN_MAX_AGE,
             )
             if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS"):
                 refresh.set_jti()
                 refresh.set_exp()
                 response.set_cookie(
-                    "refresh_token", value=str(refresh), httponly=True,
-                    secure=COOKIE_SECURE, samesite="Lax", max_age=REFRESH_TOKEN_MAX_AGE,
+                    "refresh_token",
+                    value=str(refresh),
+                    httponly=True,
+                    secure=COOKIE_SECURE,
+                    samesite="Lax",
+                    max_age=REFRESH_TOKEN_MAX_AGE,
                 )
             return response
         except Exception:
             response = Response(
-                {"detail": "Invalid or expired refresh token."}, status=status.HTTP_401_UNAUTHORIZED,
+                {"detail": "Invalid or expired refresh token."},
+                status=status.HTTP_401_UNAUTHORIZED,
             )
             _clear_auth_cookies(response)
             return response
@@ -194,7 +262,9 @@ class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        tags=["Auth"], summary="Logout", request=None,
+        tags=["Auth"],
+        summary="Logout",
+        request=None,
         description="Blacklists the refresh token and clears auth cookies.",
         responses={200: DetailSerializer},
     )
@@ -215,7 +285,8 @@ class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        tags=["Auth"], summary="Get current session",
+        tags=["Auth"],
+        summary="Get current session",
         description="Returns non-sensitive session metadata for the authenticated user.",
         responses={200: SessionResponseSerializer},
     )

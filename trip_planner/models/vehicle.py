@@ -21,9 +21,7 @@ class Vehicle(models.Model):
     trailer_number = models.CharField(max_length=50, blank=True, default="")
     license_plate = models.CharField(max_length=20, blank=True, default="")
     vin = models.CharField(max_length=17, blank=True, default="")
-    odometer_current = models.DecimalField(
-        max_digits=10, decimal_places=1, default=0
-    )
+    odometer_current = models.DecimalField(max_digits=10, decimal_places=1, default=0)
     is_active = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
 

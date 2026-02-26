@@ -1,4 +1,10 @@
-from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
+from django.db.models import Q
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    inline_serializer,
+)
 from rest_framework import serializers as s
 from rest_framework import status
 from rest_framework.response import Response
@@ -6,13 +12,21 @@ from rest_framework.views import APIView
 
 from trip_planner.constants import AuditAction
 from trip_planner.models import AuditLog, DriverProfile, Vehicle
+from trip_planner.pagination import SpotterPagination
 from trip_planner.permissions import IsAnyMember, IsFleetManagerOrAbove, get_membership
-from trip_planner.serializers import VehicleAssignSerializer, VehicleCreateSerializer, VehicleSerializer
+from trip_planner.schema import paginated_list_schema
+from trip_planner.serializers import (
+    VehicleAssignSerializer,
+    VehicleCreateSerializer,
+    VehicleSerializer,
+)
 
 DetailSerializer = inline_serializer(name="VehicleDetailMsg", fields={"detail": s.CharField()})
 
 
 class VehicleListCreateView(APIView):
+    pagination_class = SpotterPagination
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [IsFleetManagerOrAbove()]
@@ -21,15 +35,55 @@ class VehicleListCreateView(APIView):
     @extend_schema(
         tags=["Vehicles"],
         summary="List org vehicles",
-        responses={200: VehicleSerializer(many=True)},
+        description="Paginated list with optional search (truck_number, license_plate, vin) and ordering.",
+        parameters=[
+            OpenApiParameter("page", int, description="Page number (1-based)"),
+            OpenApiParameter("page_size", int, description="Page size (max 100)"),
+            OpenApiParameter(
+                "search", str, description="Search in truck_number, license_plate, vin"
+            ),
+            OpenApiParameter(
+                "ordering",
+                str,
+                description="Order by: truck_number, -truck_number, updated_at, -updated_at",
+                enum=["truck_number", "-truck_number", "updated_at", "-updated_at"],
+            ),
+        ],
+        responses={200: paginated_list_schema(VehicleSerializer, "VehicleListPaginated")},
     )
     def get(self, request):
         membership = get_membership(request.user)
-        if not membership:
+        if not membership and not getattr(request.user, "is_superuser", False):
             return Response(status=status.HTTP_403_FORBIDDEN)
-        vehicles = Vehicle.objects.filter(
-            organization=membership.organization
-        ).select_related("assigned_driver_profile")
+        if membership:
+            vehicles = Vehicle.objects.filter(organization=membership.organization)
+        else:
+            vehicles = Vehicle.objects.all()
+        vehicles = vehicles.select_related("assigned_driver_profile")
+
+        search = request.query_params.get("search", "").strip()
+        if search:
+            q = (
+                Q(truck_number__icontains=search)
+                | Q(license_plate__icontains=search)
+                | Q(vin__icontains=search)
+            )
+            vehicles = vehicles.filter(q)
+        ordering = request.query_params.get("ordering", "truck_number")
+        if ordering.lstrip("-") in ("truck_number", "updated_at") and ordering in (
+            "truck_number",
+            "-truck_number",
+            "updated_at",
+            "-updated_at",
+        ):
+            vehicles = vehicles.order_by(ordering)
+        else:
+            vehicles = vehicles.order_by("truck_number")
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(vehicles, request)
+        if page is not None:
+            return paginator.get_paginated_response(VehicleSerializer(page, many=True).data)
         return Response(VehicleSerializer(vehicles, many=True).data)
 
     @extend_schema(
@@ -43,7 +97,8 @@ class VehicleListCreateView(APIView):
         if not membership:
             return Response(status=status.HTTP_403_FORBIDDEN)
         serializer = VehicleCreateSerializer(
-            data=request.data, context={"organization": membership.organization},
+            data=request.data,
+            context={"organization": membership.organization},
         )
         serializer.is_valid(raise_exception=True)
         vehicle = serializer.save(organization=membership.organization)
@@ -142,15 +197,25 @@ class VehicleAssignView(APIView):
         try:
             profile = DriverProfile.objects.get(id=serializer.validated_data["driver_profile_id"])
         except DriverProfile.DoesNotExist:
-            return Response({"detail": "Driver profile not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Driver profile not found."}, status=status.HTTP_404_NOT_FOUND
+            )
         if vehicle.assigned_driver_profile and vehicle.assigned_driver_profile != profile:
-            return Response({"detail": "Vehicle is already assigned. Unassign first."}, status=status.HTTP_409_CONFLICT)
+            return Response(
+                {"detail": "Vehicle is already assigned. Unassign first."},
+                status=status.HTTP_409_CONFLICT,
+            )
         vehicle.assigned_driver_profile = profile
         vehicle.save(update_fields=["assigned_driver_profile"])
         AuditLog.objects.create(
-            organization=membership.organization, actor_user=request.user,
+            organization=membership.organization,
+            actor_user=request.user,
             action=AuditAction.VEHICLE_ASSIGNED,
-            metadata={"vehicle_id": str(vehicle.id), "truck_number": vehicle.truck_number, "driver_profile_id": str(profile.id)},
+            metadata={
+                "vehicle_id": str(vehicle.id),
+                "truck_number": vehicle.truck_number,
+                "driver_profile_id": str(profile.id),
+            },
             ip_address=request.META.get("REMOTE_ADDR"),
         )
         return Response(VehicleSerializer(vehicle).data)
@@ -177,7 +242,8 @@ class VehicleUnassignView(APIView):
         vehicle.assigned_driver_profile = None
         vehicle.save(update_fields=["assigned_driver_profile"])
         AuditLog.objects.create(
-            organization=membership.organization, actor_user=request.user,
+            organization=membership.organization,
+            actor_user=request.user,
             action=AuditAction.VEHICLE_UNASSIGNED,
             metadata={"vehicle_id": str(vehicle.id), "truck_number": vehicle.truck_number},
             ip_address=request.META.get("REMOTE_ADDR"),

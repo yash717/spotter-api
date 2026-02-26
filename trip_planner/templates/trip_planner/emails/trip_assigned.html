@@ -1,0 +1,78 @@
+{% extends "trip_planner/emails/base.html" %}
+
+{% block title %}New Trip Assigned - {{ trip_id }}{% endblock %}
+
+{% block preview_text %}You have been assigned a new trip from {{ pickup_address }} to {{ dropoff_address }}{% endblock %}
+
+{% block content %}
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 20px;">Hi {{ driver_name }},</p>
+
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 35px;">
+  You have been assigned a new trip. Please review the details below and prepare accordingly.
+</p>
+
+<!-- Trip Details Box -->
+<div style="background: #f8f9fa; border-left: 4px solid #3bac75; padding: 20px; border-radius: 8px; margin: 30px 0;">
+  <p style="font-size: 16px; font-weight: 600; color: #2d3436; margin: 0 0 16px 0;">Trip Details</p>
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Current Location:</strong><br>
+        {{ current_address }}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Pickup Location:</strong><br>
+        {{ pickup_address }}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Dropoff Location:</strong><br>
+        {{ dropoff_address }}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Distance:</strong> {{ total_distance }} miles
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Estimated Duration:</strong> {{ total_duration }} hours
+      </td>
+    </tr>
+    {% if vehicle_number %}
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Vehicle:</strong> {{ vehicle_number }}
+      </td>
+    </tr>
+    {% endif %}
+    {% if planned_start_time %}
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Planned Start:</strong> {{ planned_start_time }}
+      </td>
+    </tr>
+    {% endif %}
+  </table>
+</div>
+
+<!-- View Trip Button -->
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin: 30px 0;">
+  <tr>
+    <td align="center" style="padding: 0;">
+      <a href="{{ trip_url }}" target="_blank" style="display: inline-block; padding: 14px 40px; font-family: Arial, sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; background: linear-gradient(195deg, rgb(73, 241, 186), rgb(39, 165, 36)); background-color: #3bac75;">
+        View Full Trip Details
+      </a>
+    </td>
+  </tr>
+</table>
+
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 0;">
+  Safe travels,<br>
+  The Spotter AI Team
+</p>
+{% endblock %}

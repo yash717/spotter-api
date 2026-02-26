@@ -1,0 +1,43 @@
+{% extends "trip_planner/emails/base.html" %}
+
+{% block title %}Welcome to {{ org_name }} - Spotter AI{% endblock %}
+
+{% block preview_text %}Welcome to {{ org_name }}! Your account is now active.{% endblock %}
+
+{% block content %}
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 20px;">Hi {{ user_name }},</p>
+
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 35px;">
+  Welcome to <strong>{{ org_name }}</strong> on Spotter AI! Your account has been successfully created and you're all set to get started.
+</p>
+
+<!-- Login Button -->
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin: 30px 0;">
+  <tr>
+    <td align="center" style="padding: 0;">
+      <a href="{{ login_url }}" target="_blank" style="display: inline-block; padding: 14px 40px; font-family: Arial, sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; background: linear-gradient(195deg, rgb(73, 241, 186), rgb(39, 165, 36)); background-color: #3bac75;">
+        Go to Dashboard
+      </a>
+    </td>
+  </tr>
+</table>
+
+<!-- Account Details -->
+<div style="margin: 35px 0;">
+  <p style="font-size: 15px; font-weight: 500; color: #2d3436; margin-bottom: 16px;"><strong>Your Account Details:</strong></p>
+  <ul style="font-size: 14px; line-height: 1.7; color: #636e72; margin: 0; padding-left: 20px;">
+    <li style="margin-bottom: 8px;"><strong>Email:</strong> {{ user_email }}</li>
+    <li style="margin-bottom: 8px;"><strong>Role:</strong> {{ user_role }}</li>
+    <li style="margin-bottom: 8px;"><strong>Organization:</strong> {{ org_name }}</li>
+  </ul>
+</div>
+
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 35px;">
+  If you have any questions or need help getting started, please don't hesitate to reach out to your administrator or our support team.
+</p>
+
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 0;">
+  Best regards,<br>
+  The Spotter AI Team
+</p>
+{% endblock %}

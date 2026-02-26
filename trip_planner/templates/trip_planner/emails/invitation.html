@@ -1,0 +1,47 @@
+{% extends "trip_planner/emails/base.html" %}
+
+{% block title %}You're Invited to Join {{ app_name }}{% endblock %}
+
+{% block preview_text %}{{ invited_by_name }} has invited you to join {{ app_name }} on Spotter AI{% endblock %}
+
+{% block content %}
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 20px;">Hello,</p>
+
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 35px;">
+  {{ invited_by_name }} has invited you to join <strong>{{ app_name }}</strong> on Spotter AI.
+</p>
+
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 35px; text-align: center;">
+  To accept this invitation and create your account, click the button below:
+</p>
+
+<!-- Accept Button -->
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin: 30px 0;">
+  <tr>
+    <td align="center" style="padding: 0;">
+      <a href="{{ invitation_url }}" target="_blank" style="display: inline-block; padding: 14px 40px; font-family: Arial, sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; background: linear-gradient(195deg, rgb(73, 241, 186), rgb(39, 165, 36)); background-color: #3bac75;">
+        Accept Invitation
+      </a>
+    </td>
+  </tr>
+</table>
+
+<!-- Important Information -->
+<div style="margin: 35px 0;">
+  <p style="font-size: 15px; font-weight: 500; color: #2d3436; margin-bottom: 16px;"><strong>Important Information:</strong></p>
+  <ul style="font-size: 14px; line-height: 1.7; color: #636e72; margin: 0; padding-left: 20px;">
+    <li style="margin-bottom: 8px;">This invitation will expire in {{ expires_in }}</li>
+    <li style="margin-bottom: 8px;">You'll be able to access {{ app_name }} and other applications you're granted access to</li>
+    <li style="margin-bottom: 8px;">Your account will be created when you accept the invitation</li>
+  </ul>
+</div>
+
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 35px;">
+  If you have any questions or need assistance, please contact your administrator.
+</p>
+
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 0;">
+  Best regards,<br>
+  The Spotter AI Team
+</p>
+{% endblock %}

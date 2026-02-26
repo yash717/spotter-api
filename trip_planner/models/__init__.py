@@ -6,12 +6,12 @@ from .log import DailyLogSheet, DutyStatusSegment
 from .organization import Organization, OrganizationMember
 from .stop import Stop
 from .trip import Trip
-from .user import CustomUser
+from .user import User
 from .vehicle import Vehicle
 from .violation import HOSViolation
 
 __all__ = [
-    "CustomUser",
+    "User",
     "Organization",
     "OrganizationMember",
     "Invitation",

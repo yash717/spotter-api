@@ -3,7 +3,7 @@ Builds DailyLogSheet and DutyStatusSegment records from trip simulation output.
 """
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from trip_planner.constants import DutyStatus
@@ -33,11 +33,13 @@ def build_daily_logs(trip, segments: list[dict], start_dt: datetime) -> list[Dai
     for seg in segments:
         duration_hours = seg.get("duration_hours", 0)
         end_time = current_time + timedelta(hours=duration_hours)
-        timed_segments.append({
-            **seg,
-            "start_time": current_time,
-            "end_time": end_time,
-        })
+        timed_segments.append(
+            {
+                **seg,
+                "start_time": current_time,
+                "end_time": end_time,
+            }
+        )
         current_time = end_time
 
     days = _group_by_day(timed_segments, start_dt)
@@ -47,18 +49,10 @@ def build_daily_logs(trip, segments: list[dict], start_dt: datetime) -> list[Dai
     start_odometer = float(trip.vehicle.odometer_current) if trip.vehicle else 0
 
     for day_num, (log_date, day_segments) in enumerate(sorted(days.items()), start=1):
-        day_driving = sum(
-            s["duration_hours"] for s in day_segments if s["type"] == "driving"
-        )
-        day_on_duty = sum(
-            s["duration_hours"] for s in day_segments if s["type"] == "on_duty_nd"
-        )
-        day_off_duty = sum(
-            s["duration_hours"] for s in day_segments if s["type"] == "off_duty"
-        )
-        day_sleeper = sum(
-            s["duration_hours"] for s in day_segments if s["type"] == "sleeper"
-        )
+        day_driving = sum(s["duration_hours"] for s in day_segments if s["type"] == "driving")
+        day_on_duty = sum(s["duration_hours"] for s in day_segments if s["type"] == "on_duty_nd")
+        day_off_duty = sum(s["duration_hours"] for s in day_segments if s["type"] == "off_duty")
+        day_sleeper = sum(s["duration_hours"] for s in day_segments if s["type"] == "sleeper")
         day_miles = sum(s.get("miles", 0) for s in day_segments)
 
         hos_start = cumulative_hos

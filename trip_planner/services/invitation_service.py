@@ -6,7 +6,7 @@ Invitation JWT engine.
 
 import hashlib
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from django.conf import settings
@@ -16,10 +16,10 @@ from django.utils import timezone as dj_tz
 from trip_planner.constants import AuditAction, InvitationStatus, MemberRole
 from trip_planner.models import (
     AuditLog,
-    CustomUser,
     DriverProfile,
     Invitation,
     OrganizationMember,
+    User,
     Vehicle,
 )
 
@@ -43,7 +43,7 @@ def hash_token(token: str) -> str:
 
 def generate_invitation_token(invitation):
     secret, alg = _get_secret()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "iss": "spotter-eld",
         "sub": "invitation",
@@ -69,7 +69,7 @@ def validate_invitation_token(token: str) -> dict:
     try:
         invitation = Invitation.objects.select_related("organization").get(id=invitation_id)
     except Invitation.DoesNotExist:
-        raise ValueError("Invitation not found.")
+        raise ValueError("Invitation not found.") from None
 
     if invitation.status == InvitationStatus.ACCEPTED:
         raise ValueError("This invitation has already been accepted.")
@@ -81,7 +81,9 @@ def validate_invitation_token(token: str) -> dict:
     return payload
 
 
-def send_invitation(organization, invited_by_user, email, role, personal_message="", ip_address=None):
+def send_invitation(
+    organization, invited_by_user, email, role, personal_message="", ip_address=None
+):
     from .email_service import send_invitation_email
 
     Invitation.objects.filter(
@@ -105,14 +107,18 @@ def send_invitation(organization, invited_by_user, email, role, personal_message
 
     invite_url = f"{settings.FRONTEND_URL}/accept-invite?token={token}"
     send_invitation_email(
-        to_email=email, org_name=organization.name, role=role,
-        invite_url=invite_url, personal_message=personal_message,
+        to_email=email,
+        org_name=organization.name,
+        role=role,
+        invite_url=invite_url,
+        personal_message=personal_message,
         invited_by_name=f"{invited_by_user.first_name} {invited_by_user.last_name}".strip(),
         expires_in_days=organization.invitation_expiry_days,
     )
 
     AuditLog.objects.create(
-        organization=organization, actor_user=invited_by_user,
+        organization=organization,
+        actor_user=invited_by_user,
         action=AuditAction.INVITATION_SENT,
         metadata={"invitee_email": email, "role": role, "invitation_id": str(invitation.id)},
         ip_address=ip_address,
@@ -135,7 +141,7 @@ def accept_invitation(token: str, form_data: dict, ip_address=None):
     org_id = payload["org_id"]
     full_name = form_data.get("full_name", "")
 
-    user, user_created = CustomUser.objects.get_or_create(
+    user, user_created = User.objects.get_or_create(
         email=email,
         defaults={
             "username": email,
@@ -161,9 +167,11 @@ def accept_invitation(token: str, form_data: dict, ip_address=None):
 
     if role == MemberRole.DRIVER and form_data.get("truck_number"):
         truck_number = form_data["truck_number"]
-        existing = Vehicle.objects.select_for_update().filter(
-            organization_id=org_id, truck_number=truck_number
-        ).first()
+        existing = (
+            Vehicle.objects.select_for_update()
+            .filter(organization_id=org_id, truck_number=truck_number)
+            .first()
+        )
 
         if existing and existing.assigned_driver_profile is not None:
             raise ValueError(
@@ -177,7 +185,8 @@ def accept_invitation(token: str, form_data: dict, ip_address=None):
             existing.save()
         else:
             Vehicle.objects.create(
-                organization_id=org_id, assigned_driver_profile=profile,
+                organization_id=org_id,
+                assigned_driver_profile=profile,
                 truck_number=truck_number,
                 trailer_number=form_data.get("trailer_number", ""),
                 license_plate=form_data.get("license_plate", ""),
@@ -185,7 +194,9 @@ def accept_invitation(token: str, form_data: dict, ip_address=None):
             )
 
     member = OrganizationMember.objects.create(
-        organization_id=org_id, user=user, role=role,
+        organization_id=org_id,
+        user=user,
+        role=role,
         invited_by=invitation.invited_by,
     )
     profile.org_member = member
@@ -197,7 +208,8 @@ def accept_invitation(token: str, form_data: dict, ip_address=None):
     invitation.save(update_fields=["status", "accepted_at", "accepted_by"])
 
     AuditLog.objects.create(
-        organization_id=org_id, actor_user=user,
+        organization_id=org_id,
+        actor_user=user,
         action=AuditAction.INVITATION_ACCEPTED,
         metadata={"email": email, "role": role, "invitation_id": str(invitation.id)},
         ip_address=ip_address,
@@ -213,7 +225,8 @@ def revoke_invitation(invitation, revoked_by_user, ip_address=None):
     invitation.save(update_fields=["status"])
 
     AuditLog.objects.create(
-        organization=invitation.organization, actor_user=revoked_by_user,
+        organization=invitation.organization,
+        actor_user=revoked_by_user,
         action=AuditAction.INVITATION_REVOKED,
         metadata={"invitee_email": invitation.email, "invitation_id": str(invitation.id)},
         ip_address=ip_address,

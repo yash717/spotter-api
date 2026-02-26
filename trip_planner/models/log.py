@@ -52,7 +52,9 @@ class DutyStatusSegment(models.Model):
     start_location_lng = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     end_location_lat = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     end_location_lng = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
-    distance_traveled_miles = models.DecimalField(max_digits=8, decimal_places=1, null=True, blank=True)
+    distance_traveled_miles = models.DecimalField(
+        max_digits=8, decimal_places=1, null=True, blank=True
+    )
     segment_label = models.CharField(max_length=255, blank=True, default="")
     sequence_in_day = models.IntegerField(default=0)
 

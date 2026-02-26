@@ -1,4 +1,5 @@
 from .auth_views import LoginView, LogoutView, MeView, RefreshView, RegisterView
+from .geocode_views import GeocodeAutocompleteView
 from .invitation_views import (
     InvitationAcceptView,
     InvitationDetailView,
@@ -26,6 +27,7 @@ from .vehicle_views import (
 )
 
 __all__ = [
+    "GeocodeAutocompleteView",
     "RegisterView",
     "LoginView",
     "RefreshView",

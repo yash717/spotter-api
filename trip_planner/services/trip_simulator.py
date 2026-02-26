@@ -6,17 +6,17 @@ Pipeline: geocode → route → HOS simulation → stops → daily logs → pers
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone as dj_tz
 
-from trip_planner.constants import StopType, TripStatus, ViolationType, Severity
+from trip_planner.constants import TripStatus
 from trip_planner.models import HOSViolation, Stop, Trip
 
 from .geocoding import geocode_address
-from .hos_calculator import HOSState, check_violations, compute_driving_segments
+from .hos_calculator import check_violations, compute_driving_segments
 from .log_builder import build_daily_logs
 from .routing import get_multi_leg_route
 
@@ -112,7 +112,7 @@ def plan_trip(
         calculated_trip_days=trip_days,
         route_polyline_json=json.dumps(route.get("geometry", {})),
         cycle_exhausted_mid_trip=cycle_exhausted,
-        status="draft",
+        status=TripStatus.DRAFT,
         planned_start_datetime=start_dt,
     )
 
@@ -123,9 +123,7 @@ def plan_trip(
     build_daily_logs(trip, segments, start_dt)
 
     # 7. Record violations
-    violations = check_violations(
-        total_driving, total_on_duty, cycle_used_hours, segments
-    )
+    violations = check_violations(total_driving, total_on_duty, cycle_used_hours, segments)
     for v in violations:
         HOSViolation.objects.create(
             trip=trip,
@@ -176,14 +174,22 @@ def _create_stops(trip, segments, waypoints, start_dt):
         if seg["type"] in ("off_duty", "on_duty_nd", "sleeper"):
             seq += 1
             stop_type = "waypoint"
-            if "mandatory rest" in seg.get("notes", "").lower() or "10-hour" in seg.get("notes", "").lower():
+            if (
+                "mandatory rest" in seg.get("notes", "").lower()
+                or "10-hour" in seg.get("notes", "").lower()
+            ):
                 stop_type = "rest_10hr"
-            elif "30-minute" in seg.get("notes", "").lower() or "break" in seg.get("notes", "").lower():
+            elif (
+                "30-minute" in seg.get("notes", "").lower()
+                or "break" in seg.get("notes", "").lower()
+            ):
                 stop_type = "rest_30min"
             elif "fuel" in seg.get("notes", "").lower():
                 stop_type = "fuel"
 
-            lat, lng = _interpolate_position(waypoints, cumulative_miles, float(trip.total_trip_distance_miles or 1))
+            lat, lng = _interpolate_position(
+                waypoints, cumulative_miles, float(trip.total_trip_distance_miles or 1)
+            )
 
             Stop.objects.create(
                 trip=trip,

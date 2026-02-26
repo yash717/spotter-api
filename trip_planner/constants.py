@@ -10,7 +10,6 @@ class MemberRole:
     DISPATCHER = "DISPATCHER"
     DRIVER = "DRIVER"
     FLEET_MANAGER = "FLEET_MANAGER"
-    VIEWER = "VIEWER"
 
     CHOICES = [
         (PLATFORM_ADMIN, "Platform Admin"),
@@ -18,17 +17,15 @@ class MemberRole:
         (DISPATCHER, "Dispatcher"),
         (DRIVER, "Driver"),
         (FLEET_MANAGER, "Fleet Manager"),
-        (VIEWER, "Viewer"),
     ]
 
     INVITABLE_CHOICES = [
         (DISPATCHER, "Dispatcher"),
         (DRIVER, "Driver"),
         (FLEET_MANAGER, "Fleet Manager"),
-        (VIEWER, "Viewer"),
     ]
 
-    ALL = {PLATFORM_ADMIN, ORG_ADMIN, DISPATCHER, DRIVER, FLEET_MANAGER, VIEWER}
+    ALL = {PLATFORM_ADMIN, ORG_ADMIN, DISPATCHER, DRIVER, FLEET_MANAGER}
 
 
 class InvitationStatus:
@@ -130,6 +127,8 @@ class AuditAction:
     TRIP_ASSIGNED = "TRIP_ASSIGNED"
     TRIP_CREATED = "TRIP_CREATED"
     ORG_CREATED = "ORG_CREATED"
+    PROFILE_CREATED = "PROFILE_CREATED"
+    PROFILE_UPDATED = "PROFILE_UPDATED"
 
     CHOICES = [
         (INVITATION_SENT, "Invitation Sent"),
@@ -141,4 +140,6 @@ class AuditAction:
         (TRIP_ASSIGNED, "Trip Assigned"),
         (TRIP_CREATED, "Trip Created"),
         (ORG_CREATED, "Organization Created"),
+        (PROFILE_CREATED, "Profile Created"),
+        (PROFILE_UPDATED, "Profile Updated"),
     ]

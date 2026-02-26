@@ -11,15 +11,24 @@ class DriverProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = DriverProfile
         fields = [
-            "id", "email", "full_name",
-            "license_number", "license_state",
-            "home_terminal_address", "co_driver_name",
-            "current_cycle_used_hours", "cycle_reset_at",
-            "profile_completed_at", "assigned_vehicle_number",
+            "id",
+            "email",
+            "full_name",
+            "license_number",
+            "license_state",
+            "home_terminal_address",
+            "co_driver_name",
+            "current_cycle_used_hours",
+            "cycle_reset_at",
+            "profile_completed_at",
+            "assigned_vehicle_number",
         ]
         read_only_fields = [
-            "id", "email", "cycle_reset_at",
-            "profile_completed_at", "assigned_vehicle_number",
+            "id",
+            "email",
+            "cycle_reset_at",
+            "profile_completed_at",
+            "assigned_vehicle_number",
         ]
 
     @extend_schema_field(serializers.CharField(allow_null=True))

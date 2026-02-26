@@ -12,6 +12,8 @@ INVITATION_JWT_ALGORITHM = "HS256"
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
 
 INSTALLED_APPS = [
+    "daphne",
+    "channels",
     "jazzmin",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -57,6 +59,10 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "eld_backend.wsgi.application"
+ASGI_APPLICATION = "eld_backend.asgi.application"
+
+# Channels - use in-memory layer for dev (no Redis required)
+CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -65,7 +71,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-AUTH_USER_MODEL = "trip_planner.CustomUser"
+AUTH_USER_MODEL = "trip_planner.User"
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
@@ -83,7 +89,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": "trip_planner.pagination.SpotterPagination",
     "PAGE_SIZE": 25,
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
@@ -168,6 +174,18 @@ SIMPLE_JWT = {
 # --- CORS ---
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 
+# --- Email (Brevo SMTP) ---
+EMAIL_BACKEND = config(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+EMAIL_HOST = config("SMTP_HOST", default="smtp-relay.brevo.com")
+EMAIL_PORT = config("SMTP_PORT", default=587, cast=int)
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config("SMTP_USER", default="")
+EMAIL_HOST_PASSWORD = config("SMTP_PASS", default="")
+DEFAULT_FROM_EMAIL = config("SMTP_FROM_EMAIL", config("EMAIL_FROM", default="noreply@spotter.ai"))
+
 # --- External APIs ---
 ORS_API_KEY = config("ORS_API_KEY", default="")
 ORS_BASE_URL = "https://api.openrouteservice.org"
@@ -181,7 +199,7 @@ JAZZMIN_SETTINGS = {
     "login_logo": None,
     "welcome_sign": "Welcome to Spotter AI Administration",
     "copyright": "Spotter AI — ELD Trip Planner",
-    "search_model": ["trip_planner.CustomUser", "trip_planner.Organization"],
+    "search_model": ["trip_planner.User", "trip_planner.Organization"],
     "topmenu_links": [
         {"name": "API Docs", "url": "/api/docs/", "new_window": True},
         {"app": "trip_planner"},
@@ -204,7 +222,7 @@ JAZZMIN_SETTINGS = {
         "trip_planner.AuditLog",
     ],
     "icons": {
-        "trip_planner.CustomUser": "fas fa-user",
+        "trip_planner.User": "fas fa-user",
         "trip_planner.Organization": "fas fa-building",
         "trip_planner.OrganizationMember": "fas fa-users",
         "trip_planner.Invitation": "fas fa-envelope-open-text",

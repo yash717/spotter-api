@@ -19,7 +19,9 @@ class Stop(models.Model):
     scheduled_departure_time = models.DateTimeField(null=True, blank=True)
     duration_minutes = models.IntegerField(default=0)
     odometer_at_stop = models.DecimalField(max_digits=10, decimal_places=1, null=True, blank=True)
-    distance_from_prev_stop = models.DecimalField(max_digits=8, decimal_places=1, null=True, blank=True)
+    distance_from_prev_stop = models.DecimalField(
+        max_digits=8, decimal_places=1, null=True, blank=True
+    )
     notes = models.TextField(blank=True, default="")
     is_hos_mandated = models.BooleanField(default=False)
 

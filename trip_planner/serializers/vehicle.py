@@ -10,9 +10,15 @@ class VehicleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vehicle
         fields = [
-            "id", "truck_number", "trailer_number",
-            "license_plate", "vin", "odometer_current",
-            "is_active", "updated_at", "assigned_driver_name",
+            "id",
+            "truck_number",
+            "trailer_number",
+            "license_plate",
+            "vin",
+            "odometer_current",
+            "is_active",
+            "updated_at",
+            "assigned_driver_name",
         ]
         read_only_fields = ["id", "updated_at", "assigned_driver_name"]
 
@@ -26,8 +32,11 @@ class VehicleCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vehicle
         fields = [
-            "truck_number", "trailer_number",
-            "license_plate", "vin", "odometer_current",
+            "truck_number",
+            "trailer_number",
+            "license_plate",
+            "vin",
+            "odometer_current",
         ]
 
     def validate_truck_number(self, value):

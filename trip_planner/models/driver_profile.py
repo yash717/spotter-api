@@ -23,9 +23,7 @@ class DriverProfile(models.Model):
     license_state = models.CharField(max_length=5, blank=True, default="")
     home_terminal_address = models.CharField(max_length=500, blank=True, default="")
     co_driver_name = models.CharField(max_length=255, blank=True, default="")
-    current_cycle_used_hours = models.DecimalField(
-        max_digits=5, decimal_places=1, default=0
-    )
+    current_cycle_used_hours = models.DecimalField(max_digits=5, decimal_places=1, default=0)
     cycle_reset_at = models.DateTimeField(null=True, blank=True)
     profile_completed_at = models.DateTimeField(null=True, blank=True)
 

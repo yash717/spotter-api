@@ -2,7 +2,6 @@ from django.contrib import admin
 
 from .models import (
     AuditLog,
-    CustomUser,
     DailyLogSheet,
     DriverProfile,
     DutyStatusSegment,
@@ -13,12 +12,13 @@ from .models import (
     OrganizationMember,
     Stop,
     Trip,
+    User,
     Vehicle,
 )
 
 
-@admin.register(CustomUser)
-class CustomUserAdmin(admin.ModelAdmin):
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
     list_display = ["email", "first_name", "last_name", "is_active", "date_joined"]
     search_fields = ["email", "first_name", "last_name"]
     list_filter = ["is_active", "email_verified"]
@@ -47,13 +47,25 @@ class InvitationAdmin(admin.ModelAdmin):
 
 @admin.register(DriverProfile)
 class DriverProfileAdmin(admin.ModelAdmin):
-    list_display = ["full_name", "user", "license_number", "license_state", "current_cycle_used_hours"]
+    list_display = [
+        "full_name",
+        "user",
+        "license_number",
+        "license_state",
+        "current_cycle_used_hours",
+    ]
     search_fields = ["full_name", "user__email", "license_number"]
 
 
 @admin.register(Vehicle)
 class VehicleAdmin(admin.ModelAdmin):
-    list_display = ["truck_number", "organization", "trailer_number", "is_active", "odometer_current"]
+    list_display = [
+        "truck_number",
+        "organization",
+        "trailer_number",
+        "is_active",
+        "odometer_current",
+    ]
     list_filter = ["is_active"]
     search_fields = ["truck_number", "organization__name"]
 
@@ -61,9 +73,14 @@ class VehicleAdmin(admin.ModelAdmin):
 @admin.register(Trip)
 class TripAdmin(admin.ModelAdmin):
     list_display = [
-        "id", "organization", "status",
-        "input_current_address", "input_dropoff_address",
-        "total_trip_distance_miles", "calculated_trip_days", "created_at",
+        "id",
+        "organization",
+        "status",
+        "input_current_address",
+        "input_dropoff_address",
+        "total_trip_distance_miles",
+        "calculated_trip_days",
+        "created_at",
     ]
     list_filter = ["status"]
     search_fields = ["input_current_address", "input_pickup_address", "input_dropoff_address"]
@@ -78,14 +95,23 @@ class StopAdmin(admin.ModelAdmin):
 @admin.register(DailyLogSheet)
 class DailyLogSheetAdmin(admin.ModelAdmin):
     list_display = [
-        "trip", "log_date", "day_number_in_trip",
-        "total_driving_hours_day", "total_off_duty_hours_day",
+        "trip",
+        "log_date",
+        "day_number_in_trip",
+        "total_driving_hours_day",
+        "total_off_duty_hours_day",
     ]
 
 
 @admin.register(DutyStatusSegment)
 class DutyStatusSegmentAdmin(admin.ModelAdmin):
-    list_display = ["daily_log_sheet", "status", "duration_minutes", "segment_label", "sequence_in_day"]
+    list_display = [
+        "daily_log_sheet",
+        "status",
+        "duration_minutes",
+        "segment_label",
+        "sequence_in_day",
+    ]
     list_filter = ["status"]
 
 

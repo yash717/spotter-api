@@ -4,7 +4,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from trip_planner.constants import MemberRole
-from trip_planner.models import CustomUser, Organization, OrganizationMember
+from trip_planner.models import Organization, OrganizationMember, User
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -18,7 +18,7 @@ class RegisterSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8)
 
     def validate_email(self, value):
-        if CustomUser.objects.filter(email=value).exists():
+        if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return value.lower()
 
@@ -28,7 +28,7 @@ class RegisterSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        user = CustomUser.objects.create_user(
+        user = User.objects.create_user(
             username=validated_data["email"],
             email=validated_data["email"],
             password=validated_data["password"],
@@ -42,7 +42,9 @@ class RegisterSerializer(serializers.Serializer):
             primary_contact_email=validated_data["email"],
         )
         OrganizationMember.objects.create(
-            organization=org, user=user, role=MemberRole.ORG_ADMIN,
+            organization=org,
+            user=user,
+            role=MemberRole.ORG_ADMIN,
         )
         return {"user": user, "organization": org}
 
@@ -65,6 +67,6 @@ class LoginSerializer(serializers.Serializer):
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CustomUser
+        model = User
         fields = ["id", "email", "first_name", "last_name", "date_joined", "last_login"]
         read_only_fields = fields

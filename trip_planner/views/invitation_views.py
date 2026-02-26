@@ -6,15 +6,23 @@ Invitation CRUD views with Swagger docs.
 import jwt
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
-from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    inline_serializer,
+)
 from rest_framework import serializers as s
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from trip_planner.constants import InvitationStatus
 from trip_planner.models import Invitation
+from trip_planner.pagination import SpotterPagination
 from trip_planner.permissions import IsOrgAdmin, get_membership
+from trip_planner.schema import paginated_list_schema
 from trip_planner.serializers import (
     InvitationAcceptSerializer,
     InvitationCreateSerializer,
@@ -41,29 +49,72 @@ ValidateResponseSerializer = inline_serializer(
         "invitation_id": s.UUIDField(),
     },
 )
-DetailSerializer = inline_serializer(
-    name="InvitationDetailMsg", fields={"detail": s.CharField()}
-)
+DetailSerializer = inline_serializer(name="InvitationDetailMsg", fields={"detail": s.CharField()})
 
 
 @method_decorator(ratelimit(key="ip", rate="3/m", method="POST", block=True), name="post")
 class InvitationListCreateView(APIView):
+    pagination_class = SpotterPagination
+
     def get_permissions(self):
         return [IsOrgAdmin()]
 
     @extend_schema(
         tags=["Invitations"],
         summary="List org invitations",
-        description="Returns all invitations for the authenticated admin's organization.",
-        responses={200: InvitationListSerializer(many=True)},
+        description=(
+            "Returns paginated invitations for the authenticated admin's organization. "
+            "Supports filter by status and ordering."
+        ),
+        parameters=[
+            OpenApiParameter("page", int, description="Page number (1-based)"),
+            OpenApiParameter("page_size", int, description="Page size (max 100)"),
+            OpenApiParameter(
+                "status",
+                str,
+                description="Filter by status",
+                enum=[s[0] for s in InvitationStatus.CHOICES],
+            ),
+            OpenApiParameter(
+                "ordering",
+                str,
+                description="Order by: sent_at, -sent_at, email, -email",
+                enum=["sent_at", "-sent_at", "email", "-email"],
+            ),
+        ],
+        responses={200: paginated_list_schema(InvitationListSerializer, "InvitationListPaginated")},
     )
     def get(self, request):
         membership = get_membership(request.user)
-        if not membership:
+        if not membership and not getattr(request.user, "is_superuser", False):
             return Response(status=status.HTTP_403_FORBIDDEN)
-        invitations = Invitation.objects.filter(
-            organization=membership.organization
-        ).select_related("invited_by")
+        if membership:
+            invitations = Invitation.objects.filter(
+                organization=membership.organization
+            ).select_related("invited_by")
+        else:
+            invitations = Invitation.objects.all().select_related(
+                "invited_by", "organization"
+            )
+
+        status_filter = request.query_params.get("status", "").strip()
+        if status_filter and status_filter in {s[0] for s in InvitationStatus.CHOICES}:
+            invitations = invitations.filter(status=status_filter)
+        ordering = request.query_params.get("ordering", "-sent_at")
+        if ordering.lstrip("-") in ("sent_at", "email") and ordering in (
+            "sent_at",
+            "-sent_at",
+            "email",
+            "-email",
+        ):
+            invitations = invitations.order_by(ordering)
+        else:
+            invitations = invitations.order_by("-sent_at")
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(invitations, request)
+        if page is not None:
+            return paginator.get_paginated_response(InvitationListSerializer(page, many=True).data)
         return Response(InvitationListSerializer(invitations, many=True).data)
 
     @extend_schema(
@@ -85,7 +136,8 @@ class InvitationListCreateView(APIView):
         if not membership:
             return Response(status=status.HTTP_403_FORBIDDEN)
         serializer = InvitationCreateSerializer(
-            data=request.data, context={"organization": membership.organization},
+            data=request.data,
+            context={"organization": membership.organization},
         )
         serializer.is_valid(raise_exception=True)
         invitation = send_invitation(
@@ -121,16 +173,20 @@ class InvitationValidateView(APIView):
             return Response({"detail": "Token is required."}, status=status.HTTP_400_BAD_REQUEST)
         try:
             payload = validate_invitation_token(token)
-            return Response({
-                "org_name": payload.get("org_name"),
-                "email": payload.get("email"),
-                "role": payload.get("role"),
-                "invitation_id": payload.get("invitation_id"),
-            })
+            return Response(
+                {
+                    "org_name": payload.get("org_name"),
+                    "email": payload.get("email"),
+                    "role": payload.get("role"),
+                    "invitation_id": payload.get("invitation_id"),
+                }
+            )
         except jwt.ExpiredSignatureError:
             return Response({"detail": "This invitation has expired."}, status=status.HTTP_410_GONE)
         except jwt.InvalidSignatureError:
-            return Response({"detail": "Invalid invitation token."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Invalid invitation token."}, status=status.HTTP_400_BAD_REQUEST
+            )
         except ValueError as e:
             msg = str(e)
             if "already been accepted" in msg:
@@ -173,7 +229,9 @@ class InvitationAcceptView(APIView):
         except jwt.ExpiredSignatureError:
             return Response({"detail": "This invitation has expired."}, status=status.HTTP_410_GONE)
         except jwt.InvalidSignatureError:
-            return Response({"detail": "Invalid invitation token."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Invalid invitation token."}, status=status.HTTP_400_BAD_REQUEST
+            )
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -252,7 +310,9 @@ class InvitationResendView(APIView):
                 id=pk, organization=membership.organization, status="pending"
             )
         except Invitation.DoesNotExist:
-            return Response({"detail": "Pending invitation not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Pending invitation not found."}, status=status.HTTP_404_NOT_FOUND
+            )
         new_invitation = send_invitation(
             organization=membership.organization,
             invited_by_user=request.user,
@@ -263,4 +323,6 @@ class InvitationResendView(APIView):
         )
         invitation.resend_count += 1
         invitation.save(update_fields=["resend_count"])
-        return Response(InvitationListSerializer(new_invitation).data, status=status.HTTP_201_CREATED)
+        return Response(
+            InvitationListSerializer(new_invitation).data, status=status.HTTP_201_CREATED
+        )

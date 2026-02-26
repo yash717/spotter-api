@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    GeocodeAutocompleteView,
     InvitationAcceptView,
     InvitationDetailView,
     InvitationListCreateView,
@@ -9,9 +10,9 @@ from .views import (
     InvitationValidateView,
     LoginView,
     LogoutView,
-    MeView,
     MemberDetailView,
     MemberListView,
+    MeView,
     OrganizationDetailView,
     ProfileView,
     RefreshView,
@@ -30,6 +31,8 @@ from .views import (
 )
 
 urlpatterns = [
+    # Geocoding (must be before trips to avoid path conflicts)
+    path("geocode/autocomplete/", GeocodeAutocompleteView.as_view(), name="geocode-autocomplete"),
     # Auth
     path("auth/register/", RegisterView.as_view(), name="auth-register"),
     path("auth/login/", LoginView.as_view(), name="auth-login"),

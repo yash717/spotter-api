@@ -1,0 +1,50 @@
+[project]
+name = "spotter-api"
+version = "1.0.0"
+description = "ELD Trip Planner API"
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "migrations",
+    "*.sqlite3",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "ARG001", # unused function argument (common in Django)
+    "ARG002", # unused method argument (Django view/permission signatures)
+    "F405",   # star imports may be undefined (Django settings use from x import *)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"*/migrations/*" = ["ARG", "E501"]
+"*/management/commands/*" = ["ARG001", "ARG002", "F841"]
+"*/settings/*" = ["F405"]
+"*/permissions/*" = ["ARG002"]
+"*/schema.py" = ["ARG002"]
+"trip_planner/services/hos_calculator.py" = ["F841"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false

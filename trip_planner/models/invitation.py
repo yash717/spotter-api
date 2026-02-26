@@ -14,8 +14,10 @@ class Invitation(models.Model):
         Organization, on_delete=models.CASCADE, related_name="invitations"
     )
     invited_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, related_name="sent_invitations",
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="sent_invitations",
     )
     email = models.EmailField(db_index=True)
     role = models.CharField(max_length=20, choices=MemberRole.CHOICES)
@@ -27,8 +29,11 @@ class Invitation(models.Model):
     sent_at = models.DateTimeField(auto_now_add=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
     accepted_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, blank=True, related_name="accepted_invitations",
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="accepted_invitations",
     )
     personal_message = models.CharField(max_length=500, blank=True, default="")
     resend_count = models.IntegerField(default=0)

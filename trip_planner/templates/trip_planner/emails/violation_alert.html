@@ -1,0 +1,74 @@
+{% extends "trip_planner/emails/base.html" %}
+
+{% block title %}HOS Violation Alert - {{ violation_type }}{% endblock %}
+
+{% block preview_text %}A {{ violation_severity }} HOS violation has been detected on your trip{% endblock %}
+
+{% block content %}
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 20px;">Hi {{ driver_name }},</p>
+
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 35px;">
+  A <strong>{{ violation_severity }}</strong> Hours of Service violation has been detected during your trip planning.
+</p>
+
+<!-- Violation Details Box -->
+<div style="background: {% if violation_severity == 'CRITICAL' %}#fff5f5{% elif violation_severity == 'ERROR' %}#fff8ed{% else %}#f8f9fa{% endif %}; border-left: 4px solid {% if violation_severity == 'CRITICAL' %}#de4c3a{% elif violation_severity == 'ERROR' %}#e9a23b{% else %}#3bac75{% endif %}; padding: 20px; border-radius: 8px; margin: 30px 0;">
+  <p style="font-size: 16px; font-weight: 600; color: #2d3436; margin: 0 0 16px 0;">Violation Details</p>
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Type:</strong> {{ violation_type }}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Severity:</strong> {{ violation_severity }}
+      </td>
+    </tr>
+    {% if violation_time %}
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Time:</strong> {{ violation_time }}
+      </td>
+    </tr>
+    {% endif %}
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Description:</strong><br>
+        {{ description }}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 0; font-size: 14px; color: #636e72;">
+        <strong>Trip ID:</strong> {{ trip_id }}
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- Action Required -->
+<div style="margin: 35px 0;">
+  <p style="font-size: 15px; font-weight: 500; color: #2d3436; margin-bottom: 16px;"><strong>Action Required:</strong></p>
+  <ul style="font-size: 14px; line-height: 1.7; color: #636e72; margin: 0; padding-left: 20px;">
+    <li style="margin-bottom: 8px;">Review the trip plan and adjust your schedule to ensure HOS compliance</li>
+    <li style="margin-bottom: 8px;">Consider adding additional rest stops or extending break durations</li>
+    <li style="margin-bottom: 8px;">Contact your dispatcher if you need assistance with replanning</li>
+  </ul>
+</div>
+
+<!-- View Trip Button -->
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin: 30px 0;">
+  <tr>
+    <td align="center" style="padding: 0;">
+      <a href="{{ trip_url }}" target="_blank" style="display: inline-block; padding: 14px 40px; font-family: Arial, sans-serif; font-size: 16px; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; background: linear-gradient(195deg, rgb(73, 241, 186), rgb(39, 165, 36)); background-color: #3bac75;">
+        View Trip & Violations
+      </a>
+    </td>
+  </tr>
+</table>
+
+<p style="font-size: 15px; line-height: 1.7; color: #636e72; margin-bottom: 0;">
+  Stay safe and compliant,<br>
+  The Spotter AI Team
+</p>
+{% endblock %}

@@ -9,8 +9,7 @@ Rules:
   5. 70-hour / 8-day cycle limit
 """
 
-from dataclasses import dataclass, field
-from decimal import Decimal
+from dataclasses import dataclass
 
 
 @dataclass
@@ -110,59 +109,69 @@ def compute_driving_segments(
     # Pre-trip inspection (on-duty, not driving)
     segment_seq += 1
     state.apply_on_duty_not_driving(0.25)
-    segments.append({
-        "sequence": segment_seq,
-        "type": "on_duty_nd",
-        "duration_hours": 0.25,
-        "miles": 0,
-        "notes": "Pre-trip inspection",
-    })
+    segments.append(
+        {
+            "sequence": segment_seq,
+            "type": "on_duty_nd",
+            "duration_hours": 0.25,
+            "miles": 0,
+            "notes": "Pre-trip inspection",
+        }
+    )
 
     while miles_remaining > 0.01:
         if state.cycle_exhausted():
-            segments.append({
-                "sequence": segment_seq + 1,
-                "type": "violation",
-                "duration_hours": 0,
-                "miles": 0,
-                "notes": f"70-hour cycle exhausted with {miles_remaining:.1f} miles remaining",
-            })
+            segments.append(
+                {
+                    "sequence": segment_seq + 1,
+                    "type": "violation",
+                    "duration_hours": 0,
+                    "miles": 0,
+                    "notes": f"70-hour cycle exhausted with {miles_remaining:.1f} miles remaining",
+                }
+            )
             break
 
         if state.needs_reset():
             segment_seq += 1
             state.apply_reset()
-            segments.append({
-                "sequence": segment_seq,
-                "type": "off_duty",
-                "duration_hours": HOSState.RESET_DURATION,
-                "miles": 0,
-                "notes": "10-hour mandatory rest (reset driving & window)",
-                "is_hos_mandated": True,
-            })
+            segments.append(
+                {
+                    "sequence": segment_seq,
+                    "type": "off_duty",
+                    "duration_hours": HOSState.RESET_DURATION,
+                    "miles": 0,
+                    "notes": "10-hour mandatory rest (reset driving & window)",
+                    "is_hos_mandated": True,
+                }
+            )
             # Pre-trip after rest
             segment_seq += 1
             state.apply_on_duty_not_driving(0.25)
-            segments.append({
-                "sequence": segment_seq,
-                "type": "on_duty_nd",
-                "duration_hours": 0.25,
-                "miles": 0,
-                "notes": "Pre-trip inspection after rest",
-            })
+            segments.append(
+                {
+                    "sequence": segment_seq,
+                    "type": "on_duty_nd",
+                    "duration_hours": 0.25,
+                    "miles": 0,
+                    "notes": "Pre-trip inspection after rest",
+                }
+            )
             continue
 
         if state.needs_break():
             segment_seq += 1
             state.apply_break()
-            segments.append({
-                "sequence": segment_seq,
-                "type": "off_duty",
-                "duration_hours": HOSState.BREAK_DURATION,
-                "miles": 0,
-                "notes": "30-minute mandatory break (8hr driving threshold)",
-                "is_hos_mandated": True,
-            })
+            segments.append(
+                {
+                    "sequence": segment_seq,
+                    "type": "off_duty",
+                    "duration_hours": HOSState.BREAK_DURATION,
+                    "miles": 0,
+                    "notes": "30-minute mandatory break (8hr driving threshold)",
+                    "is_hos_mandated": True,
+                }
+            )
             continue
 
         drivable_hours = state.max_drivable_now
@@ -186,25 +195,29 @@ def compute_driving_segments(
         miles_remaining -= drive_miles
         miles_since_fuel += drive_miles
 
-        segments.append({
-            "sequence": segment_seq,
-            "type": "driving",
-            "duration_hours": round(drive_hours, 2),
-            "miles": round(drive_miles, 1),
-            "notes": f"Driving ({drive_miles:.1f} mi)",
-        })
+        segments.append(
+            {
+                "sequence": segment_seq,
+                "type": "driving",
+                "duration_hours": round(drive_hours, 2),
+                "miles": round(drive_miles, 1),
+                "notes": f"Driving ({drive_miles:.1f} mi)",
+            }
+        )
 
         if needs_fuel_after and miles_remaining > 0.01:
             segment_seq += 1
             state.apply_on_duty_not_driving(FUEL_STOP_DURATION)
             miles_since_fuel = 0.0
-            segments.append({
-                "sequence": segment_seq,
-                "type": "on_duty_nd",
-                "duration_hours": FUEL_STOP_DURATION,
-                "miles": 0,
-                "notes": "Fuel stop",
-            })
+            segments.append(
+                {
+                    "sequence": segment_seq,
+                    "type": "on_duty_nd",
+                    "duration_hours": FUEL_STOP_DURATION,
+                    "miles": 0,
+                    "notes": "Fuel stop",
+                }
+            )
 
     return segments
 
@@ -223,21 +236,24 @@ def check_violations(
 
     total_cycle = cycle_used_hours + total_driving_hours + total_on_duty_hours
     if total_cycle > HOSState.MAX_CYCLE:
-        violations.append({
-            "type": "cycle_limit_exceeded",
-            "severity": "critical",
-            "description": (
-                f"70-hour cycle limit would be exceeded. "
-                f"Total cycle hours: {total_cycle:.1f}"
-            ),
-        })
+        violations.append(
+            {
+                "type": "cycle_limit_exceeded",
+                "severity": "critical",
+                "description": (
+                    f"70-hour cycle limit would be exceeded. Total cycle hours: {total_cycle:.1f}"
+                ),
+            }
+        )
 
     for seg in segments:
         if seg.get("type") == "violation":
-            violations.append({
-                "type": "cycle_limit_exceeded",
-                "severity": "critical",
-                "description": seg.get("notes", "HOS violation detected"),
-            })
+            violations.append(
+                {
+                    "type": "cycle_limit_exceeded",
+                    "severity": "critical",
+                    "description": seg.get("notes", "HOS violation detected"),
+                }
+            )
 
     return violations
