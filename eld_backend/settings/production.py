@@ -2,18 +2,31 @@ from decouple import Csv, config
 
 from .base import *  # noqa: F401,F403
 
+import dj_database_url
+
 DEBUG = False
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("DB_NAME", default="eld_db"),
-        "USER": config("DB_USER", default="eld_user"),
-        "PASSWORD": config("DB_PASSWORD", default=""),
-        "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", default="5432"),
+ALLOWED_HOSTS = config(
+    "ALLOWED_HOSTS",
+    default="localhost,.onrender.com",
+    cast=Csv(),
+)
+
+# Support DATABASE_URL (Render auto-sets this) or individual DB vars
+_database_url = config("DATABASE_URL", default="")
+if _database_url:
+    DATABASES = {"default": dj_database_url.parse(_database_url)}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": config("DB_NAME", default="eld_db"),
+            "USER": config("DB_USER", default="eld_user"),
+            "PASSWORD": config("DB_PASSWORD", default=""),
+            "HOST": config("DB_HOST", default="localhost"),
+            "PORT": config("DB_PORT", default="5432"),
+        }
     }
-}
 
 CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
