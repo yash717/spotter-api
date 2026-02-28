@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spotter-api
+  namespace: spotter
+  labels:
+    app: spotter-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spotter-api
+  template:
+    metadata:
+      labels:
+        app: spotter-api
+    spec:
+      initContainers:
+        # Wait for postgres to be ready, then run migrations
+        - name: migrate
+          image: spotter-api:local
+          imagePullPolicy: Never         # use locally-loaded image in kind
+          command: ["python", "manage.py", "migrate", "--no-input"]
+          envFrom:
+            - configMapRef:
+                name: spotter-api-config
+            - secretRef:
+                name: spotter-api-secrets
+      containers:
+        - name: spotter-api
+          image: spotter-api:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: spotter-api-config
+            - secretRef:
+                name: spotter-api-secrets
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health/
+              port: 8000
+            initialDelaySeconds: 45
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "768Mi"
+              cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spotter-api
+  namespace: spotter
+spec:
+  selector:
+    app: spotter-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP

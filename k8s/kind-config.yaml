@@ -1,0 +1,9 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: spotter-local
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080   # NodePort for API (optional NodePort access)
+        hostPort: 18080        # Use 18080 to avoid conflict with local port 8000
+        protocol: TCP

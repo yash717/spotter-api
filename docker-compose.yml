@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: spotter-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: spotter_dev
+      POSTGRES_USER: spotter
+      POSTGRES_PASSWORD: spotter_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"          # expose on 5433 to avoid clash with local pg
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spotter -d spotter_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Django API (Daphne ASGI) ─────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spotter-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env.docker           # separate docker-specific env file
+    environment:
+      DJANGO_SETTINGS_MODULE: eld_backend.settings.production
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: spotter_dev
+      DB_USER: spotter
+      DB_PASSWORD: spotter_secret
+      ALLOWED_HOSTS: "localhost,127.0.0.1,api,spotter-api"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://spotter-ui:3000"
+      FRONTEND_URL: "http://localhost:3000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - static_files:/app/staticfiles
+    # Run migrations then start daphne
+    command: >
+      sh -c "python manage.py migrate --no-input &&
+             daphne -b 0.0.0.0 -p 8000 eld_backend.asgi:application"
+
+volumes:
+  postgres_data:
+  static_files:

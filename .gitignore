@@ -35,3 +35,5 @@ Thumbs.db
 /tmp/
 *.txt.bak
 test_all_apis.sh
+.env.k8s
+.env.docker

@@ -16,6 +16,11 @@ from .trip_output import (
     TripListSerializer,
 )
 from .vehicle import VehicleAssignSerializer, VehicleCreateSerializer, VehicleSerializer
+from .dashboard import (
+    DashboardStatsSerializer,
+    DashboardTripSummarySerializer,
+    DriverDashboardSerializer,
+)
 
 __all__ = [
     "RegisterSerializer",
@@ -38,4 +43,7 @@ __all__ = [
     "VehicleCreateSerializer",
     "VehicleAssignSerializer",
     "DriverProfileSerializer",
+    "DashboardStatsSerializer",
+    "DashboardTripSummarySerializer",
+    "DriverDashboardSerializer",
 ]

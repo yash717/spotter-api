@@ -25,6 +25,11 @@ from .vehicle_views import (
     VehicleListCreateView,
     VehicleUnassignView,
 )
+from .dashboard_views import (
+    DriverDashboardView,
+    DriverDashboardStatsView,
+    DriverUpcomingTripsView,
+)
 
 __all__ = [
     "GeocodeAutocompleteView",
@@ -54,4 +59,7 @@ __all__ = [
     "VehicleAssignView",
     "VehicleUnassignView",
     "ProfileView",
+    "DriverDashboardView",
+    "DriverDashboardStatsView",
+    "DriverUpcomingTripsView",
 ]

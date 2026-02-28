@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 from django.urls import path
 
 from .views import (
@@ -28,9 +29,20 @@ from .views import (
     VehicleDetailView,
     VehicleListCreateView,
     VehicleUnassignView,
+    DriverDashboardView,
+    DriverDashboardStatsView,
+    DriverUpcomingTripsView,
 )
 
+
+def health_check(request):
+    """Kubernetes liveness/readiness probe endpoint — no auth required."""
+    return JsonResponse({"status": "ok", "service": "spotter-api"})
+
+
 urlpatterns = [
+    # Health check (unauthenticated — for K8s probes)
+    path("health/", health_check, name="health-check"),
     # Geocoding (must be before trips to avoid path conflicts)
     path("geocode/autocomplete/", GeocodeAutocompleteView.as_view(), name="geocode-autocomplete"),
     # Auth
@@ -65,4 +77,8 @@ urlpatterns = [
     path("trips/<uuid:pk>/status/", TripStatusView.as_view(), name="trip-status"),
     # Profile
     path("profile/", ProfileView.as_view(), name="profile"),
+    # Dashboard
+    path("dashboard/", DriverDashboardView.as_view(), name="driver-dashboard"),
+    path("dashboard/stats/", DriverDashboardStatsView.as_view(), name="driver-dashboard-stats"),
+    path("dashboard/upcoming/", DriverUpcomingTripsView.as_view(), name="driver-upcoming-trips"),
 ]
