@@ -1,3 +1,5 @@
+import os
+
 from decouple import Csv, config
 
 from .base import *  # noqa: F401,F403
@@ -5,6 +7,9 @@ from .base import *  # noqa: F401,F403
 import dj_database_url
 
 DEBUG = False
+
+# Render sets RENDER=true; SMTP ports (25, 465, 587) are blocked on Render free tier
+ON_RENDER = os.environ.get("RENDER") == "true"
 
 # Enable WhiteNoise to serve static files in production
 MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
@@ -47,12 +52,11 @@ CSRF_TRUSTED_ORIGINS = config(
     cast=Csv(),
 )
 
-# Email: Brevo API (recommended on Render - SMTP ports are blocked on free tier)
-# Fallback to SMTP for paid Render or local dev
-if config("BREVO_API_KEY", default=""):
-    # Brevo REST API uses HTTPS - works on Render free tier
+# Email: On Render, SMTP is blocked — must use Brevo API (HTTPS)
+# Off Render: Brevo API or SMTP both work
+if ON_RENDER or config("BREVO_API_KEY", default=""):
     EMAIL_BACKEND = "eld_backend.email_backends.BrevoAPIEmailBackend"
-    BREVO_API_KEY = config("BREVO_API_KEY")
+    BREVO_API_KEY = config("BREVO_API_KEY", default="")
     DEFAULT_FROM_EMAIL = config(
         "SMTP_FROM_EMAIL", config("EMAIL_FROM", default="noreply@spotter.ai")
     )

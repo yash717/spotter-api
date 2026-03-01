@@ -31,7 +31,10 @@ class BrevoAPIEmailBackend(BaseEmailBackend):
             return 0
         if not self.api_key:
             if not self.fail_silently:
-                raise ValueError("BREVO_API_KEY is required for BrevoAPIEmailBackend")
+                raise ValueError(
+                    "BREVO_API_KEY is required. Render blocks SMTP — add BREVO_API_KEY "
+                    "in Render Dashboard → Environment. Get it from Brevo: Settings → API Keys."
+                )
             return 0
 
         sent = 0
