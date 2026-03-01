@@ -6,6 +6,10 @@ import dj_database_url
 
 DEBUG = False
 
+# Enable WhiteNoise to serve static files in production
+MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS",
     default="localhost,.onrender.com",
