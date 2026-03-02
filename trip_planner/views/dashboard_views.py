@@ -94,9 +94,9 @@ class DriverDashboardStatsView(APIView):
             or 0
         )
 
-        # Get active violations
+        # Get active violations (not yet acknowledged)
         active_violations = HOSViolation.objects.filter(
-            trip__in=cycle_trips, resolved_at__isnull=True
+            trip__in=cycle_trips, acknowledged=False
         ).count()
 
         stats = {
@@ -230,7 +230,7 @@ class DriverDashboardView(APIView):
         )
 
         active_violations = HOSViolation.objects.filter(
-            trip__in=cycle_trips, resolved_at__isnull=True
+            trip__in=cycle_trips, acknowledged=False
         ).count()
 
         stats = {
